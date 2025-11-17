@@ -162,22 +162,23 @@ impl Tag {
 
     /// Removes a picture with the given picture type. Returns the removed picture for convenience.
     /// # Errors
-    /// Although rare, this function can error if a picture with the given type is not found AND
-    /// the first picture in the set is not decoded properly.
+    /// This function will never error.
+    /// The reason it returns a Result is due to backwards compatibility reasons.
     pub fn remove_picture_type(&mut self, picture_type: PictureType) -> Result<Option<Picture>> {
         let Some(pictures) = self.comments.get_mut(PICTURE_BLOCK_TAG) else {
             return Ok(None);
         };
-        let mut index_to_remove = 0;
+
         for (index, data) in (*pictures).iter().enumerate() {
             if let Ok(pic) = Picture::from_base64(data) {
                 if pic.picture_type == picture_type {
-                    index_to_remove = index;
+                    pictures.remove(index);
+                    return Ok(Some(pic));
                 }
             }
         }
 
-        Picture::from_base64(&pictures.remove(index_to_remove)).map(Some)
+        Ok(None)
     }
 
     /// Gets a picture which has a certain picture type, or None if there are no pictures with that
@@ -413,5 +414,36 @@ fn get_end_info(packet: &ogg::Packet) -> PacketWriteEndInfo {
         PacketWriteEndInfo::EndPage
     } else {
         PacketWriteEndInfo::NormalPacket
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_remove_image_with_no_matching_type() {
+        // File contains exactly one image with CoverFront type.
+        let mut tag =
+            Tag::read_from_path("testfiles/silence_cover.opus").expect("Failed to open testfile");
+
+        // Removing different type should not remove anything
+        let remove_result = tag.remove_picture_type(PictureType::Media);
+        assert!(matches!(remove_result, Ok(None)));
+    }
+
+    #[test]
+    fn test_remove_image_when_empty() {
+        // File contains exactly one image with CoverFront type.
+        let mut tag =
+            Tag::read_from_path("testfiles/silence_cover.opus").expect("Failed to open testfile");
+
+        // Removing matching type should remove picture
+        let remove_result = tag.remove_picture_type(PictureType::CoverFront);
+        assert!(matches!(remove_result, Ok(Some(_))));
+
+        // Removing anything with no pictures left should not return anything
+        let remove_result = tag.remove_picture_type(PictureType::CoverFront);
+        assert!(matches!(remove_result, Ok(None)));
     }
 }

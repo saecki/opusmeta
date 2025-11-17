@@ -4,3 +4,6 @@ Cargo.lock
 # files for testing
 *.opus
 *.jpg
+
+# include unit test files
+!testfiles/*.opus
