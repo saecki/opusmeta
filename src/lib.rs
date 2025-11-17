@@ -1,15 +1,5 @@
 #![allow(clippy::module_name_repetitions)]
-
-//! opusmeta is a Rust crate for reading and writing metadata from opus files.
-//!
-//! See the `read_tags` example file for basic usage.
-//!
-//! Unlike the more structured ID3 format, the Opus spec does not mandate a set of tag names
-//! or formatting for values. However, a list of common tag names can be found
-//! [here](https://xiph.org/vorbis/doc/v-comment.html).
-//!
-//! For reading and writing picture data, opusmeta uses the
-//! [METADATA_BLOCK_PICTURE](https://wiki.xiph.org/VorbisComment#Cover_art) proposal, which is supported by common players like ffmpeg and vlc.
+#![doc = include_str!("../README.md")]
 
 pub mod iter;
 pub mod picture;
@@ -151,8 +141,7 @@ impl Tag {
 
     /// Add a picture. If a picture with the same `PictureType` already exists, it is removed first.
     /// # Errors
-    /// This function will error if [`remove_picture_type`](Self::remove_picture_type) errors, or
-    /// if encoding the given data to Opus format or to base64 errors.
+    /// This function will error  if encoding the given data to Opus format or to base64 errors.
     pub fn add_picture(&mut self, picture: &Picture) -> Result<()> {
         let _ = self.remove_picture_type(picture.picture_type)?;
         let data = picture.to_base64()?;
