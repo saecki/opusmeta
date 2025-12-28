@@ -91,13 +91,16 @@ impl Tag {
 
     /// Add one entry.
     pub fn add_one(&mut self, tag: LowercaseString, value: String) {
-        self.comments.entry(tag.0).or_default().push(value);
+        self.comments
+            .entry(tag.0.into_owned())
+            .or_default()
+            .push(value);
     }
 
     /// Add multiple entries.
     pub fn add_many(&mut self, tag: LowercaseString, mut values: Vec<String>) {
         self.comments
-            .entry(tag.0)
+            .entry(tag.0.into_owned())
             .and_modify(|v: &mut Vec<String>| v.append(&mut values))
             .or_insert(values);
     }
@@ -105,18 +108,18 @@ impl Tag {
     /// Get all entries for a particular key, or None if no occurrences of the key exist.
     #[must_use]
     pub fn get(&self, tag: &LowercaseString) -> Option<&Vec<String>> {
-        self.comments.get(tag.0.as_str())
+        self.comments.get(tag.0.as_ref())
     }
 
     /// Gets the first entry for a particular key, or None if no occurences of the key exist.
     #[must_use]
     pub fn get_one(&self, tag: &LowercaseString) -> Option<&String> {
-        self.comments.get(tag.0.as_str()).and_then(|v| v.first())
+        self.comments.get(tag.0.as_ref()).and_then(|v| v.first())
     }
 
     /// Remove all entries for a particular key. Optionally returns the removed values, if any.
     pub fn remove_entries(&mut self, tag: &LowercaseString) -> Option<Vec<String>> {
-        self.comments.remove(tag.0.as_str())
+        self.comments.remove(tag.0.as_ref())
     }
 
     /// Remove all entries for a particular key, inserting the given values instead.
@@ -125,7 +128,7 @@ impl Tag {
         tag: LowercaseString,
         values: Vec<String>,
     ) -> Option<Vec<String>> {
-        self.comments.insert(tag.0, values)
+        self.comments.insert(tag.0.into_owned(), values)
     }
 
     /// Gets the vendor string
