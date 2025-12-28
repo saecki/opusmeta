@@ -5,9 +5,6 @@ pub mod iter;
 pub mod picture;
 mod utils;
 
-use iter::{CommentsIterator, PicturesIterator};
-use ogg::{PacketReader, PacketWriteEndInfo, PacketWriter};
-use picture::{Picture, PictureError, PictureType};
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::fs::File;
@@ -15,6 +12,10 @@ use std::fs::OpenOptions;
 use std::io::Cursor;
 use std::io::{Read, Seek, Write};
 use std::path::Path;
+
+use iter::{CommentsIterator, PicturesIterator};
+use ogg::{PacketReader, PacketWriteEndInfo, PacketWriter};
+use picture::{Picture, PictureError, PictureType};
 
 pub use utils::LowercaseString;
 
