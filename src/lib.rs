@@ -197,11 +197,11 @@ impl Tag {
         };
 
         for (index, data) in (*pictures).iter().enumerate() {
-            if let Ok(pic) = Picture::from_base64(data) {
-                if pic.picture_type == picture_type {
-                    pictures.remove(index);
-                    return Ok(Some(pic));
-                }
+            if let Ok(pic) = Picture::from_base64(data)
+                && pic.picture_type == picture_type
+            {
+                pictures.remove(index);
+                return Ok(Some(pic));
             }
         }
 
@@ -214,10 +214,10 @@ impl Tag {
     pub fn get_picture_type(&self, picture_type: PictureType) -> Option<Picture> {
         let pictures = self.comments.get(PICTURE_BLOCK_TAG)?;
         for picture in pictures {
-            if let Ok(decoded) = Picture::from_base64(picture) {
-                if decoded.picture_type == picture_type {
-                    return Some(decoded);
-                }
+            if let Ok(decoded) = Picture::from_base64(picture)
+                && decoded.picture_type == picture_type
+            {
+                return Some(decoded);
             }
         }
 
@@ -234,10 +234,8 @@ impl Tag {
     /// improperly.
     #[must_use]
     pub fn pictures(&self) -> Vec<Picture> {
-        match self.iter_pictures() {
-            Some(iter) => iter.filter_map(Result::ok).collect(),
-            None => vec![],
-        }
+        self.iter_pictures()
+            .map_or_else(Vec::new, |iter| iter.filter_map(Result::ok).collect())
     }
 }
 
