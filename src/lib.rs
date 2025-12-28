@@ -9,57 +9,94 @@ use iter::{CommentsIterator, PicturesIterator};
 use ogg::{PacketReader, PacketWriteEndInfo, PacketWriter};
 use picture::{Picture, PictureError, PictureType};
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::Cursor;
 use std::io::{Read, Seek, Write};
 use std::path::Path;
-use thiserror::Error;
 
 pub use utils::LowercaseString;
 
 /// Error type.
 ///
 /// Encapsulates every error that could occur in the usage of this crate.
-#[derive(Error, Debug)]
+#[derive(Debug)]
 #[non_exhaustive]
 pub enum Error {
     /// Failed to read an ogg packet, or the file is not an ogg file
-    #[error("{0}")]
-    ReadError(#[from] ogg::OggReadError),
+    ReadError(ogg::OggReadError),
     /// The selected file is an ogg file, but not an opus file.
-    #[error("The selected file is not an opus file")]
     NotOpus,
     /// Expected a packet (for example, the comment header packet), but the stream ended early
-    #[error("Expected a packet but did not receive one")]
     MissingPacket,
     /// An error occured while trying to execute an io operation. If the underlying `ErrorKind` is a
     /// [`ErrorKind::UnexpectedEof`](std::io::ErrorKind::UnexpectedEof), then it usually means that
     /// a piece of data, either an ogg packet or an encoded image, was shorter than expected by the
     /// spec.
-    #[error("The comment header was malformed: {0}")]
-    DataError(#[from] std::io::Error),
+    DataError(std::io::Error),
     /// A comment was not in TAG=VALUE format. The offending line in the comment header is provided
     /// for convenience.
-    #[error("Encountered a comment which was not in TAG=VALUE format.")]
     MalformedComment(String),
     /// Expected valid UTF-8 data as mandated by the spec, but did not receive it. The underlying
     /// `FromUtf8Error` provides the offending bytes for conveniece.
-    #[error(
-        "Expected valid UTF-8, but did not receive it. See the contained FromUtf8Error for the offending bytes."
-    )]
-    UTFError(#[from] std::string::FromUtf8Error),
+    UTFError(std::string::FromUtf8Error),
     /// The content was too big for the opus spec (e.g. is more than [`u32::MAX`] bytes long). Since
     /// [`u32::MAX`] bytes is almost 4.3 GB, this error should almost never occur.
-    #[error("The content was too big for the Opus spec")]
     TooBigError,
     /// An error occured while encoding or decoding a [`Picture`]. See [`PictureError`] for more info.
-    #[error("An error occured while encoding or decoding a picture: {0}")]
-    PictureError(#[from] PictureError),
+    PictureError(PictureError),
     /// Raised if the platform's `usize` is smaller than 32 bits. This error is raised because
     /// the opus spec uses u32 for lengths, but Rust uses usize instead.
-    #[error("This crate expects `usize` to be at least 32 bits in size.")]
-    PlatformError(#[from] std::num::TryFromIntError),
+    PlatformError(std::num::TryFromIntError),
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::ReadError(err) => Display::fmt(err, f),
+            Self::NotOpus => f.write_str("The selected file is not an opus file"),
+            Self::MissingPacket => f.write_str("Expected a packet but did not receive one"),
+            Self::DataError(err) => write!(f, "The comment header was malformed: {err}"),
+            Self::MalformedComment(_) => f.write_str("Encountered a comment which was not in TAG=VALUE format."),
+            Self::UTFError(_) => f.write_str("Expected valid UTF-8, but did not receive it. See the contained FromUtf8Error for the offending bytes."),
+            Self::TooBigError => f.write_str("The content was too big for the Opus spec"),
+            Self::PictureError(err) => write!(f, "An error occured while encoding or decoding a picture: {err}"),
+            Self::PlatformError(_) => f.write_str("This crate expects `usize` to be at least 32 bits in size."),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
+
+impl From<std::num::TryFromIntError> for Error {
+    fn from(v: std::num::TryFromIntError) -> Self {
+        Self::PlatformError(v)
+    }
+}
+
+impl From<PictureError> for Error {
+    fn from(v: PictureError) -> Self {
+        Self::PictureError(v)
+    }
+}
+
+impl From<std::string::FromUtf8Error> for Error {
+    fn from(v: std::string::FromUtf8Error) -> Self {
+        Self::UTFError(v)
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(v: std::io::Error) -> Self {
+        Self::DataError(v)
+    }
+}
+
+impl From<ogg::OggReadError> for Error {
+    fn from(v: ogg::OggReadError) -> Self {
+        Self::ReadError(v)
+    }
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
