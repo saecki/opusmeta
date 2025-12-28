@@ -401,7 +401,7 @@ impl Tag {
     ///
     /// See [`CommentsIterator`] for more info.
     #[must_use]
-    pub fn iter_comments(&self) -> CommentsIterator {
+    pub fn iter_comments(&self) -> CommentsIterator<'_> {
         CommentsIterator {
             comments_iter: self.comments.iter().filter(|c| c.0 != PICTURE_BLOCK_TAG),
         }
@@ -411,7 +411,7 @@ impl Tag {
     ///
     /// See [`PicturesIterator`] for more info.
     #[must_use]
-    pub fn iter_pictures(&self) -> Option<PicturesIterator> {
+    pub fn iter_pictures(&self) -> Option<PicturesIterator<'_>> {
         self.comments
             .get(PICTURE_BLOCK_TAG)
             .map(|pict_vec| PicturesIterator {
