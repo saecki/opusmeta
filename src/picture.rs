@@ -4,8 +4,7 @@
 //! proposal to encode pictures into Opus Comments.
 
 use crate::Result;
-use base64::prelude::{Engine as _, BASE64_STANDARD};
-use mime_sniffer::MimeTypeSniffer;
+use base64::prelude::{BASE64_STANDARD, Engine as _};
 use std::fs::OpenOptions;
 use std::io::{Cursor, Read, Seek};
 use std::path::Path;
@@ -220,9 +219,9 @@ impl Picture {
 
         let mime_type = match mime_type {
             Some(s) => s,
-            None => output
-                .sniff_mime_type()
+            None => infer::get(&output)
                 .ok_or(PictureError::NoMimeType)?
+                .mime_type()
                 .into(),
         };
 
