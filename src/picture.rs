@@ -4,12 +4,11 @@
 //! proposal to encode pictures into Opus Comments.
 
 use crate::Result;
-use base64::prelude::{Engine as _, BASE64_STANDARD};
-use mime_sniffer::MimeTypeSniffer;
+use base64::prelude::{BASE64_STANDARD, Engine as _};
+use std::fmt::Display;
 use std::fs::OpenOptions;
 use std::io::{Cursor, Read, Seek};
 use std::path::Path;
-use thiserror::Error;
 
 /// Type of picture, according to the APIC picture standard.
 ///
@@ -57,26 +56,41 @@ impl PictureType {
 }
 
 /// Errors that could be raised while encoding or decoding a [`Picture`].
-#[derive(Debug, Clone, Error)]
+#[derive(Debug, Clone)]
 pub enum PictureError {
     /// See [`PictureType::from_u32`].
-    #[error("Invalid picture type")]
     InvalidPictureType,
     /// MIME Type was too long (more than [`u32::MAX`] bytes long)
-    #[error("MIME type is too long (more than u32::MAX bytes long!)")]
     MimeTooLong,
     /// Description string was too long (more than [`u32::MAX`] bytes long)
-    #[error("Description is too long (more than u32::MAX bytes long!)")]
     DescriptionTooLong,
     /// Picture data was too long (more than [`u32::MAX`] bytes long)
-    #[error("Picture data is too long (more than u32::MAX bytes long!)")]
     DataTooLong,
     /// Failed to decode base64 data.
-    #[error("Failed to decode base64 data")]
-    Base64DecodeError(#[from] base64::DecodeError),
+    Base64DecodeError(base64::DecodeError),
     /// Failed to sniff a mime type from a file.
-    #[error("Failed to sniff mime type from file")]
     NoMimeType,
+}
+
+impl Display for PictureError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::InvalidPictureType => "Invalid picture type",
+            Self::MimeTooLong => "MIME type is too long (more than u32::MAX bytes long!)",
+            Self::DescriptionTooLong => "Description is too long (more than u32::MAX bytes long!)",
+            Self::DataTooLong => "Picture data is too long (more than u32::MAX bytes long!)",
+            Self::Base64DecodeError(_) => "Failed to decode base64 data",
+            Self::NoMimeType => "Failed to sniff mime type from file",
+        })
+    }
+}
+
+impl std::error::Error for PictureError {}
+
+impl From<base64::DecodeError> for PictureError {
+    fn from(value: base64::DecodeError) -> Self {
+        Self::Base64DecodeError(value)
+    }
 }
 
 /// Stores picture data.
@@ -220,9 +234,9 @@ impl Picture {
 
         let mime_type = match mime_type {
             Some(s) => s,
-            None => output
-                .sniff_mime_type()
+            None => infer::get(&output)
                 .ok_or(PictureError::NoMimeType)?
+                .mime_type()
                 .into(),
         };
 
