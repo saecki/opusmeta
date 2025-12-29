@@ -272,9 +272,9 @@ impl Tag {
     /// - An error occurs while writing an ogg packet to the target
     /// - An error occurs while seeking through the target
     /// - An error occurs while copying the finished ogg stream from memory back to the target
-    pub fn write_to<W: Read + Write + Seek>(&self, mut f_in: W) -> Result<()> {
-        let f_out_raw: Vec<u8> = vec![];
-        let mut cursor = Cursor::new(f_out_raw);
+    pub fn write_to<W: StorageFile>(&self, mut f_in: W) -> Result<()> {
+        let mut f_out_raw: Vec<u8> = vec![];
+        let mut cursor = Cursor::new(&mut f_out_raw);
 
         let mut reader = PacketReader::new(&mut f_in);
         let mut writer = PacketWriter::new(&mut cursor);
@@ -310,10 +310,9 @@ impl Tag {
         }
         // stream ended
 
-        drop(reader);
-        cursor.seek(std::io::SeekFrom::Start(0))?;
         f_in.seek(std::io::SeekFrom::Start(0))?;
-        std::io::copy(&mut cursor, &mut f_in)?;
+        f_in.set_len(f_out_raw.len() as u64)?;
+        f_in.write_all(&f_out_raw)?;
 
         Ok(())
     }
@@ -393,6 +392,48 @@ impl Tag {
             .keys()
             .filter(|k| *k != PICTURE_BLOCK_TAG)
             .map(AsRef::as_ref)
+    }
+}
+
+/// A trait representing a file-like reader/writer.
+///
+/// This trait is the combination of the [`std::io`]
+/// stream traits with an additional method to resize the file.
+pub trait StorageFile: Read + Write + Seek {
+    /// Resize the file. This method behaves the same as
+    /// [`File::set_len`](std::fs::File::set_len).
+    fn set_len(&mut self, new_size: u64) -> crate::Result<()>;
+}
+
+impl<T: StorageFile> StorageFile for &mut T {
+    fn set_len(&mut self, new_size: u64) -> crate::Result<()> {
+        T::set_len(self, new_size)
+    }
+}
+
+impl StorageFile for File {
+    fn set_len(&mut self, new_size: u64) -> crate::Result<()> {
+        Ok(std::fs::File::set_len(self, new_size)?)
+    }
+}
+
+impl StorageFile for &File {
+    fn set_len(&mut self, new_size: u64) -> crate::Result<()> {
+        Ok(std::fs::File::set_len(self, new_size)?)
+    }
+}
+
+impl StorageFile for Cursor<Vec<u8>> {
+    fn set_len(&mut self, new_size: u64) -> crate::Result<()> {
+        self.get_mut().resize(new_size as usize, 0);
+        Ok(())
+    }
+}
+
+impl StorageFile for Cursor<&mut Vec<u8>> {
+    fn set_len(&mut self, new_size: u64) -> crate::Result<()> {
+        self.get_mut().resize(new_size as usize, 0);
+        Ok(())
     }
 }
 
