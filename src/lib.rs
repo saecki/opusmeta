@@ -5,9 +5,6 @@ pub mod iter;
 pub mod picture;
 mod utils;
 
-use iter::{CommentsIterator, PicturesIterator};
-use ogg::{PacketReader, PacketWriteEndInfo, PacketWriter};
-use picture::{Picture, PictureError, PictureType};
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::fs::File;
@@ -15,6 +12,10 @@ use std::fs::OpenOptions;
 use std::io::Cursor;
 use std::io::{Read, Seek, Write};
 use std::path::Path;
+
+use iter::{CommentsIterator, PicturesIterator};
+use ogg::{PacketReader, PacketWriteEndInfo, PacketWriter};
+use picture::{Picture, PictureError, PictureType};
 
 pub use utils::LowercaseString;
 
@@ -196,11 +197,11 @@ impl Tag {
         };
 
         for (index, data) in (*pictures).iter().enumerate() {
-            if let Ok(pic) = Picture::from_base64(data) {
-                if pic.picture_type == picture_type {
-                    pictures.remove(index);
-                    return Ok(Some(pic));
-                }
+            if let Ok(pic) = Picture::from_base64(data)
+                && pic.picture_type == picture_type
+            {
+                pictures.remove(index);
+                return Ok(Some(pic));
             }
         }
 
@@ -213,10 +214,10 @@ impl Tag {
     pub fn get_picture_type(&self, picture_type: PictureType) -> Option<Picture> {
         let pictures = self.comments.get(PICTURE_BLOCK_TAG)?;
         for picture in pictures {
-            if let Ok(decoded) = Picture::from_base64(picture) {
-                if decoded.picture_type == picture_type {
-                    return Some(decoded);
-                }
+            if let Ok(decoded) = Picture::from_base64(picture)
+                && decoded.picture_type == picture_type
+            {
+                return Some(decoded);
             }
         }
 
@@ -233,10 +234,8 @@ impl Tag {
     /// improperly.
     #[must_use]
     pub fn pictures(&self) -> Vec<Picture> {
-        match self.iter_pictures() {
-            Some(iter) => iter.filter_map(Result::ok).collect(),
-            None => vec![],
-        }
+        self.iter_pictures()
+            .map_or_else(Vec::new, |iter| iter.filter_map(Result::ok).collect())
     }
 }
 
@@ -401,7 +400,7 @@ impl Tag {
     ///
     /// See [`CommentsIterator`] for more info.
     #[must_use]
-    pub fn iter_comments(&self) -> CommentsIterator {
+    pub fn iter_comments(&self) -> CommentsIterator<'_> {
         CommentsIterator {
             comments_iter: self.comments.iter().filter(|c| c.0 != PICTURE_BLOCK_TAG),
         }
@@ -411,7 +410,7 @@ impl Tag {
     ///
     /// See [`PicturesIterator`] for more info.
     #[must_use]
-    pub fn iter_pictures(&self) -> Option<PicturesIterator> {
+    pub fn iter_pictures(&self) -> Option<PicturesIterator<'_>> {
         self.comments
             .get(PICTURE_BLOCK_TAG)
             .map(|pict_vec| PicturesIterator {

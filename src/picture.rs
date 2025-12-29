@@ -3,12 +3,14 @@
 //! This crate uses the [METADATA_BLOCK_PICTURE](https://wiki.xiph.org/VorbisComment#Cover_art)
 //! proposal to encode pictures into Opus Comments.
 
-use crate::Result;
-use base64::prelude::{BASE64_STANDARD, Engine as _};
 use std::fmt::Display;
 use std::fs::OpenOptions;
 use std::io::{Cursor, Read, Seek};
 use std::path::Path;
+
+use base64::prelude::{BASE64_STANDARD, Engine as _};
+
+use crate::Result;
 
 /// Type of picture, according to the APIC picture standard.
 ///
